@@ -13,10 +13,15 @@ const int MAX_CLIENTS_AMOUNT = 5;
 Server::Server(int port): mAcceptor(mIoContext, tcp::endpoint(tcp::v4(), port)),
                           mClientIdCounter(0) {}
 
-void Server::clientHandler(std::shared_ptr<ClientConnection> connection) {
+void Server::clientHandler(int connectionId) {
+    auto connectionIt = std::find_if(mClientConnections.begin(),
+                                    mClientConnections.end(),
+                                    [connectionId] (const std::unique_ptr<ClientConnection>& connection) {
+                                        return connection->id == connectionId;
+                                    });
+
     boost::system::error_code error;
-    int connectionId = connection->id;
-    tcp::socket& sock = connection->sock;
+    tcp::socket& sock = (*connectionIt)->sock;
     while (true) {
         char data[MAX_MSG_LENGTH];
 
@@ -30,11 +35,6 @@ void Server::clientHandler(std::shared_ptr<ClientConnection> connection) {
             }
             std::lock_guard<std::mutex> lock(mMutex);
             std::cout << "Remove conection '" << connectionId << "'.\n";
-            auto connectionIt = std::find_if(mClientConnections.begin(),
-                                             mClientConnections.end(),
-                                             [connectionId](const std::shared_ptr<ClientConnection>& client) {
-                                                return client->id == connectionId;
-                                             });
             mClientConnections.erase(connectionIt);
             return;
         }
@@ -69,10 +69,9 @@ void Server::run() {
             return;
         }
         std::cout << "Server::run(): New client connected!\n";
-        auto client = std::make_shared<ClientConnection>(mClientIdCounter, std::move(sock));
-        mClientConnections.push_back(client);   // copy client (point counter +1)
-        std::thread([this, client]() mutable {  // copy client (point counter +1)
-            clientHandler(std::move(client)); }).detach();  // move client (point counter the same)
+        auto client = std::make_unique<ClientConnection>(mClientIdCounter, std::move(sock));
+        mClientConnections.push_back(std::move(client));
+        std::thread([this](int connectionId) { clientHandler(connectionId); }, mClientIdCounter).detach();
         mClientIdCounter++;
-    }   // client point counter = 1 (in the mClientConnections)
+    }
 }

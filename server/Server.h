@@ -1,6 +1,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <list>
 #include <memory>
 #include <boost/asio.hpp>
 
@@ -19,12 +20,12 @@ private:
         tcp::socket sock;
     };
 
-    void clientHandler(std::shared_ptr<ClientConnection>);
+    void clientHandler(int);
 
 private:
     boost::asio::io_context mIoContext;
     tcp::acceptor mAcceptor;
-    std::vector<std::shared_ptr<ClientConnection>> mClientConnections;
+    std::list<std::unique_ptr<ClientConnection>> mClientConnections;
     int mClientIdCounter;
     std::mutex mMutex;
 };
