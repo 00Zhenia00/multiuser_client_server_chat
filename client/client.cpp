@@ -1,51 +1,56 @@
-#include <iostream>
+#include "Client.h"
+
 #include <boost/asio.hpp>
-#include <cstdlib>
-#include <cstring>
-#include <vector>
 
-using namespace boost::asio;
-using boost::asio::ip::tcp;
+namespace {
 
-enum { max_length = 1024 };
+const int MAX_NAME_LENGTH = 128;
+const std::string CLIENT_ENTER_SYMBOL = "> ";
 
-int main(int argc, char** argv) {
-    try {
-        boost::asio::io_context io_context;
+}
 
-        tcp::socket sock(io_context);
-        tcp::endpoint ep(ip::address::from_string("127.0.0.1"), 8001);
-        sock.connect(ep);
-
-        std::thread([&sock](){
-            boost::system::error_code error;
-            while (true) {
-                char msg[max_length];
-                size_t length = sock.read_some(boost::asio::buffer(msg), error);
-                if (error == boost::asio::error::eof) {
-                    std::cout << "Client: Server disconnected!\n";
-                    return; // Connection closed cleanly by peer.
-                }
-                if (error) {
-                    std::cout << "Client: Failed to read message!\n";
-                    return;
-                }
-                msg[length] = '\0';
-                std::cout << msg << std::endl;
-            }
-        }).detach();
-
-        while (true) {
-            char request[max_length];
-            // std::cout << "Enter message: ";
-            std::cin.getline(request, max_length);
-            size_t request_length = std::strlen(request);
-            boost::asio::write(sock, boost::asio::buffer(request, request_length));
-        }
-
+int main() {
+    Client client;
+    if (!client.connect("127.0.0.1", 8001)) {
+        std::cout << "Error: Failed to connect to server!\n";
     }
-    catch (std::exception& e){
-        std::cerr << "Exception: " << e.what() << "\n";
+    std::cout << "Connected to server!\n";
+
+    char name[MAX_NAME_LENGTH];
+    std::cout << "Enter your name: ";
+    std::cin.getline(name, MAX_NAME_LENGTH);
+    if (!client.join_server(name)) {
+        std::cout << "Error: Failed to join server!\n";
+    }
+    std::cout << "Joined server!\n";
+
+    auto messagesHandler = [&client] () {
+        while (true) {
+            std::string name;
+            std::string msg;
+            if(!client.recv(name, msg)) {
+                std::cout << "Failed to receive message!\n";
+                return;
+            }
+            std::cout << "<" << name << ">: " << msg << std::endl;
+        }
+    };
+
+    std::thread(messagesHandler).detach();
+
+    double pingTime = 0.0;
+    if ((pingTime = client.ping()) < 0.0){
+        std::cout << "Failed to ping server!\n";
+        return -1.0;
+    }
+    std::cout << "Ping: " << pingTime << "\n";
+
+    while (true) {
+        char request[1024];
+        // std::cout << CLIENT_ENTER_SYMBOL;
+        std::cin.getline(request, 1024);
+
+        client.send(request);
     }
     return 0;
 }

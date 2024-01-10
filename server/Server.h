@@ -14,9 +14,10 @@ public:
 
 private:
     struct ClientConnection {
-        ClientConnection(int id, tcp::socket sock)
-            : id(id), sock(std::move(sock)) {}
+        ClientConnection(int id, const std::string& name, tcp::socket sock)
+            : id(id), name(name), sock(std::move(sock)) {}
         int id;
+        std::string name;
         tcp::socket sock;
     };
 
