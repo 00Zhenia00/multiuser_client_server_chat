@@ -10,7 +10,7 @@ using boost::asio::ip::tcp;
 class Client {
 public:
     Client();
-    bool connect(const std::string &host, const uint16_t port);
+    bool connect(const std::string& host, const uint16_t port);
     bool join_server(const std::string& name);
     bool send(const std::string& msg);
     bool recv(std::string& name, std::string& msg);

@@ -7,7 +7,7 @@ namespace {
 const int MAX_NAME_LENGTH = 128;
 const std::string CLIENT_ENTER_SYMBOL = "> ";
 
-}
+}  // namespace
 
 int main() {
     Client client;
@@ -24,11 +24,11 @@ int main() {
     }
     std::cout << "Joined server!\n";
 
-    auto messagesHandler = [&client] () {
+    auto messagesHandler = [&client]() {
         while (true) {
             std::string name;
             std::string msg;
-            if(!client.recv(name, msg)) {
+            if (!client.recv(name, msg)) {
                 std::cout << "Failed to receive message!\n";
                 return;
             }
@@ -39,7 +39,7 @@ int main() {
     std::thread(messagesHandler).detach();
 
     double pingTime = 0.0;
-    if ((pingTime = client.ping()) < 0.0){
+    if ((pingTime = client.ping()) < 0.0) {
         std::cout << "Failed to ping server!\n";
         return -1.0;
     }
