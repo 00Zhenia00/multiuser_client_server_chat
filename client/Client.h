@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <thread>
 #include <string>
@@ -10,10 +12,44 @@ using boost::asio::ip::tcp;
 class Client {
 public:
     Client();
+
+    /**
+     * @brief Establishes connections to the server.
+     *
+     * @return false if connection failed or server declined connection, else
+     * true.
+     */
     bool connect(const std::string& host, const uint16_t port);
-    bool join_server(const std::string& name);
+
+    /**
+     * @brief Join server with given name.
+     *
+     * @return false if read/write failed or server declined joining, else true.
+     */
+    bool joinServer(const std::string& name);
+
+    /**
+     * @brief Send given message to server.
+     *
+     * @return false if write failed, else true.
+     */
     bool send(const std::string& msg);
+
+    /**
+     * @brief Receive message from server.
+     *
+     * @param name message author name
+     * @param msg message text
+     *
+     * @return false if write failed, else true.
+     */
     bool recv(std::string& name, std::string& msg);
+
+    /**
+     * @brief Ping server.
+     *
+     * @return -1 if ping failed, else return ping time.
+     */
     double ping();
 
 private:

@@ -27,7 +27,7 @@ bool Client::connect(const std::string& host, const uint16_t port) {
     return response.type == MessageType::ACCEPT;
 }
 
-bool Client::join_server(const std::string& name) {
+bool Client::joinServer(const std::string& name) {
     if (name.empty()) return false;
 
     Message request;

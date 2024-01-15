@@ -7,10 +7,12 @@
 
 namespace {
 
-const int MAX_MSG_LENGTH = 1024;
 const int MAX_CLIENTS_AMOUNT = 5;
 
 }  // namespace
+
+using namespace boost::asio;
+using boost::system::error_code;
 
 Server::Server(int port)
     : mAcceptor(mIoContext, tcp::endpoint(tcp::v4(), port)),
@@ -23,14 +25,13 @@ void Server::clientHandler(int connectionId) {
             return connection->id == connectionId;
         });
 
-    boost::system::error_code error;
+    error_code error;
     tcp::socket& sock = (*connectionIt)->sock;
     while (true) {
         Message inmsg;
-        size_t length = boost::asio::read(
-            sock, boost::asio::buffer(&inmsg, sizeof(inmsg)), error);
+        size_t length = read(sock, buffer(&inmsg, sizeof(inmsg)), error);
         if (error) {
-            if (error == boost::asio::error::eof) {
+            if (error == error::eof) {
                 std::cout << "Server::clientHandler(): Client '" << connectionId
                           << "'disconnected!\n";
             } else {
@@ -47,11 +48,7 @@ void Server::clientHandler(int connectionId) {
         switch (inmsg.type) {
             case MessageType::CONNECT: {
                 Message outmsg{MessageType::ACCEPT, ""};
-                boost::asio::write(
-                    sock,
-                    boost::asio::buffer(reinterpret_cast<void*>(&outmsg),
-                                        sizeof(outmsg)),
-                    error);
+                write(sock, buffer(reinterpret_cast<void*>(&outmsg), sizeof(outmsg)), error);
                 if (error) {
                     std::cout << "Server::clientHandler(): Failed to write"
                                  "message to client '"
@@ -64,11 +61,7 @@ void Server::clientHandler(int connectionId) {
             case MessageType::JOIN: {
                 (*connectionIt)->name = std::string(inmsg.text);
                 Message outmsg{MessageType::OK, ""};
-                boost::asio::write(
-                    sock,
-                    boost::asio::buffer(reinterpret_cast<void*>(&outmsg),
-                                        sizeof(outmsg)),
-                    error);
+                write(sock, buffer(reinterpret_cast<void*>(&outmsg), sizeof(outmsg)), error);
                 if (error) {
                     std::cout << "Server::clientHandler(): Failed to write"
                                  "message to client '"
@@ -82,11 +75,7 @@ void Server::clientHandler(int connectionId) {
                 strcpy(inmsg.name, (*connectionIt)->name.data());
                 for (const auto& client : mClientConnections) {
                     if (client->id != connectionId) {
-                        boost::asio::write(
-                            client->sock,
-                            boost::asio::buffer(reinterpret_cast<void*>(&inmsg),
-                                                sizeof(inmsg)),
-                            error);
+                        write(client->sock, buffer(reinterpret_cast<void*>(&inmsg), sizeof(inmsg)), error);
                         if (error) {
                             std::cout
                                 << "Server::clientHandler(): Failed to write"
@@ -100,11 +89,7 @@ void Server::clientHandler(int connectionId) {
             }
 
             case MessageType::PING: {
-                boost::asio::write(
-                    sock,
-                    boost::asio::buffer(reinterpret_cast<void*>(&inmsg),
-                                        sizeof(inmsg)),
-                    error);
+                write(sock, buffer(reinterpret_cast<void*>(&inmsg), sizeof(inmsg)), error);
                 if (error) {
                     std::cout << "Server::clientHandler(): Failed to write"
                                  "message to client '"
@@ -131,7 +116,7 @@ void Server::run() {
             std::this_thread::sleep_for(std::chrono::milliseconds(5000));
             continue;
         }
-        boost::system::error_code error;
+        error_code error;
         tcp::socket sock = mAcceptor.accept(error);
         if (error) {
             std::cout << "Server::run(): Failed to accept new socket"
@@ -139,12 +124,10 @@ void Server::run() {
             return;
         }
         std::cout << "Server::run(): New client connected!\n";
-        auto connection = std::make_unique<ClientConnection>(
-            mClientIdCounter, "Unknown user", std::move(sock));
+        auto connection = std::make_unique<ClientConnection>(mClientIdCounter, "", std::move(sock));
         mClientConnections.push_back(std::move(connection));
         std::thread([this](int connectionId) { clientHandler(connectionId); },
-                    mClientIdCounter)
-            .detach();
+                    mClientIdCounter).detach();
         mClientIdCounter++;
     }
 }
